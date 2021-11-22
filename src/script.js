@@ -5,9 +5,12 @@ import * as dat from 'dat.gui';
 import { EffectComposer } from './postprocessing/EffectComposer.js';
 import { RenderPass } from './postprocessing/RenderPass.js';
 import { UnrealBloomPass } from './postprocessing/UnrealBloomPass.js';
-import { dynamicInputs, randomInteger, onMouseMoved } from './controls'
+import { randomInteger, onMouseMoved } from './controls'
+import * as Tone from 'tone'
 
 const gui = new dat.GUI();
+
+const synth = new Tone.Synth().toDestination();
 
 const scene = new THREE.Scene()
 
@@ -85,10 +88,15 @@ composer.addPass( bloomPass );
 
 // Check if we use that input
 function checkIfKey(key) {
+  const now = Tone.now()
   switch (key) {
     case 'KeyA': 
+      // trigger the attack immediately
+      synth.triggerAttack("C4", now)
       return true;
     case 'KeyD':
+      // trigger the attack immediately
+      synth.triggerAttack("G4", now)
       return true;
     default: 
       return false;   
