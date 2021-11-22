@@ -5,16 +5,18 @@ import * as dat from 'dat.gui';
 import { EffectComposer } from './postprocessing/EffectComposer.js';
 import { RenderPass } from './postprocessing/RenderPass.js';
 import { UnrealBloomPass } from './postprocessing/UnrealBloomPass.js';
+import { dynamicInputs, randomInteger, onMouseMoved } from './controls'
 
 const gui = new dat.GUI();
 
 const scene = new THREE.Scene()
 
 let params = { 
-  size: 1,
+  size: 0.5,
   height: 64,
   width: 32,
-  fog: 0.002
+  fog: 0.002,
+  boundary: 2000
 }
 
 const bloom = {
@@ -24,21 +26,8 @@ const bloom = {
   bloomRadius: 0
 };
 
-let composer
-
-// Objects
-const group = new THREE.Group()
-
-
-const cubes = []
-
-const light = new THREE.AmbientLight( 0x404040 ); // soft white light
-scene.add( light );
-
-const spotLight = new THREE.SpotLight( 0xffffff );
-spotLight.position.set( 10, 10, 10 );
-scene.add( spotLight );
-
+// Active inputs
+let active = []
 
 // Inputs 
 const input = { 
@@ -50,18 +39,23 @@ const input = {
   }
 }
 
-document.addEventListener('keypress', logKey);
 
-function logKey(e) {
-  switch (e.code) {
+// Objects
+const group = new THREE.Group()
+const cubes = []
 
-  }
-    
-  console.log(e.code)
-}
+// Lights
+const light = new THREE.AmbientLight( 0x404040 ); 
+scene.add( light );
+
+const spotLight = new THREE.SpotLight( 0xffffff );
+spotLight.position.set( 10, 10, 10 );
+scene.add( spotLight );
+
+
 
 // Camera
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1100)
+const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 2000)
 camera.position.z = 15
 camera.position.y = 3
 camera.position.x = 3
@@ -75,6 +69,9 @@ const renderer = new THREE.WebGLRenderer({
 })
 renderer.setSize(window.innerWidth, window.innerHeight)
 
+
+// Post-processing
+let composer
 const renderScene = new RenderPass( scene, camera );
 
 const bloomPass = new UnrealBloomPass( new THREE.Vector2( window.innerWidth, window.innerHeight ), 1.5, 0.4, 0.85 );
@@ -86,13 +83,38 @@ composer = new EffectComposer( renderer );
 composer.addPass( renderScene );
 composer.addPass( bloomPass );
 
-document.addEventListener('mousemove', (e) => onMouseMoved(e))
-
-
-function onMouseMoved(e) {
-  camera.position.x =  e.clientX / (window.innerWidth)
-  camera.position.y =  - e.clientY / (window.innerHeight)
+// Check if we use that input
+function checkIfKey(key) {
+  switch (key) {
+    case 'KeyA': 
+      return true;
+    case 'KeyD':
+      return true;
+    default: 
+      return false;   
+  }
 }
+
+// Event listeners
+document.addEventListener('keydown', (e) => {
+  let keyCheck = checkIfKey(e.code);
+  if (keyCheck === true) {
+    active[e.code] = true
+  }
+  console.log(active)
+});
+
+document.addEventListener('keyup', (e) => { 
+  let keyCheck = checkIfKey(e.code);
+  if (keyCheck === true) {
+    active[e.code] = false
+  }
+  console.log(active)
+});
+
+
+document.addEventListener('mousemove', (e) => onMouseMoved(e, camera))
+
 
 let particles = {}
 function addParticles() {
@@ -101,9 +123,9 @@ function addParticles() {
 
   for ( let i = 0; i < 500; i ++ ) {
 
-    const x = randomInteger(-30,30)
-    const y = randomInteger(-30,30)
-    const z = randomInteger(-30,30)
+    const x = randomInteger(-params.boundary,params.boundary)
+    const y = randomInteger(-params.boundary,params.boundary)
+    const z = randomInteger(-params.boundary,params.boundary)
 
     vertices.push( x, y, z );
   }
@@ -114,29 +136,26 @@ function addParticles() {
   material.color.setHSL( 1, 1, 1 );
 
   particles = new THREE.Points( geometry, material );
-  console.log(particles)
   scene.add( particles );
 }
+
+const gridHelper = new THREE.GridHelper( 10, 10 );
+scene.add( gridHelper );
 
 function generateSphere() {
   const geometry  = new THREE.SphereGeometry( params.size, params.height, params.width )
   const material = new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff, emissive: 0x0, metalness:0.1, roughness:0.2, opacity:0.2})
   const id = cubes.length - 1
   cubes[cubes.length] = new THREE.Mesh(geometry, material)
-  const x = randomInteger(-20,20)
-  const y = randomInteger(-20,20)
-  const z = randomInteger(-20,20)
-  console.log(cubes[id])
+  const x = randomInteger(-params.boundary,params.boundary)
+  const y = randomInteger(-params.boundary,params.boundary)
+  const z = randomInteger(-params.boundary,params.boundary)
   cubes[id].position.set(x,y,z)
   group.add(cubes[id])
 
   const cube = folder.addFolder(`Cube` + ' ' + id)
   cube.add(cubes[id], 'id')
   cube.add(cubes[id].scale, 'x', 0, 10)
-}
-
-function randomInteger(min, max) {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 const geometry = new THREE.SphereGeometry( 500, 60, 40 );
@@ -147,13 +166,9 @@ const material = new THREE.MeshBasicMaterial( { map: texture } );
 
 const mesh = new THREE.Mesh( geometry, material );
 
-// scene.add( mesh );
 
-function start () {
-				// invert the geometry on the x-axis so that all of the faces point inward
-				
-
-  for (let i=0; i < 2; i++) {
+function start () {				
+  for (let i=0; i < 100; i++) {
     const geometry = new THREE.SphereGeometry( params.size, params.height, params.width )
     const material = new THREE.MeshStandardMaterial({ color: Math.random() * 0xffffff, emissive: 0x0, metalness:0.1, roughness:0.2, opacity:0.2})
     cubes[i] = new THREE.Mesh(geometry, material)
@@ -169,26 +184,22 @@ function start () {
     cube.add(cubes[i].scale, 'x', 0, 10)
   }
 
-  for (let i=0; i < 30; i++) {
-    generateSphere()
-  }
+  // for (let i=0; i < 30; i++) {
+  //   generateSphere()
+  // }
   scene.add(group)
   animate()
 }
 
-// function transition() {
-//   let max = params.fog
-//   scene.fog = new THREE.FogExp2( 0x000000, max)
-//   for 
-// }
-
 function animate() {
-scene.fog = new THREE.FogExp2( 0x000000, params.fog );
+  console.log('animate')
+  // scene.fog = new THREE.FogExp2( 0x000000, params.fog );
 
   if (particles.rotation) {
     particles.rotation.y += input.particles.rotationSpeed
     particles.rotation.x += input.particles.rotationSpeed
   }
+
   mesh.rotation.y += input.sphere.rotationSpeed
   group.rotation.x += input.sphere.rotationSpeed
   group.rotation.y += input.sphere.rotationSpeed
@@ -207,7 +218,6 @@ folder.open()
 
 start()
 addParticles()
-console.log(cubes)
 
 
 
