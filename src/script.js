@@ -4,71 +4,64 @@ import * as THREE from 'three'
 import * as dat from 'dat.gui';
 import { EffectComposer } from './postprocessing/EffectComposer.js';
 import { RenderPass } from './postprocessing/RenderPass.js';
+import { ShaderPass } from './postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from './postprocessing/UnrealBloomPass.js';
 import { randomInteger, onMouseMoved } from './controls'
-import * as Tone from 'tone'
+import { config, bloom, sceneSettings } from './config'
 
+//////////////////////////////////////
+// INITIAL SETUP & VARS            //
+////////////////////////////////////
+
+var client = new WebSocket("ws://10.188.204.47:4000");
 const gui = new dat.GUI();
-
-
 const scene = new THREE.Scene()
 
-let params = { 
-  size: 0.5,
-  height: 64,
-  width: 32,
-  fog: 0.1,
-  boundary: 10
+// Testing toggle 
+let testing = { 
+  state: false
 }
-
-const bloom = {
-  exposure: 2,
-  bloomStrength: 4,
-  bloomThreshold: -2,
-  bloomRadius: 1
-};
-
-// Active inputs
 
 // Inputs 
 const input = { 
   sphere: { 
-    rotationSpeed: 0.002
+    rotationSpeed: 0.001
   }, 
   particles: { 
-    rotationSpeed: 0.002
+    rotationSpeed: 0.001
   }
 }
 
-let active = []
-let states = [0,0] // 0 - Default, 1 - Adding or added, 2 - Released or releasing
+// Array storing current active inputs
+let active = [0,0,0,0,0,0,0,0,0] 
+// 0 - Default, 1 - Adding or added, 2 - Released or releasing
+let states = [0,0,0,0,0,0,0,0,0] 
 
-// Objects
-const groups = [new THREE.Group(), new THREE.Group()]
-const cubes = []
+//////////////////////////////////////
+// Lights & scene extras           //
+////////////////////////////////////
 
 // Lights
 const light = new THREE.AmbientLight( 0x404040 ); 
 scene.add( light );
 
-const spotLight = new THREE.SpotLight( 0xffffff );
-spotLight.position.set( 10, 10, 10 );
-scene.add( spotLight );
-
 // Grid helper
-// const gridHelper = new THREE.GridHelper( 10, 10 );
-// scene.add( gridHelper );
+const gridHelper = new THREE.GridHelper( 10, 10 );
 
+//////////////////////////////////////
+// CAMERA                          //
+////////////////////////////////////
 
-
-// Camera
 const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 2000)
 camera.position.z = 15
 camera.position.y = 3
 camera.position.x = 3
 scene.add(camera) 
 
-// Renderer
+///////////////////////////////////////
+// RENDERER                        //
+////////////////////////////////////
+
 const canvas = document.querySelector('.webgl')
 const renderer = new THREE.WebGLRenderer({
   canvas: canvas,
@@ -76,133 +69,62 @@ const renderer = new THREE.WebGLRenderer({
 })
 renderer.setSize(window.innerWidth, window.innerHeight)
 
+//////////////////////////////////////
+// POST-PROCESSING                 //
+////////////////////////////////////
 
-// Post-processing
-let composer
+// Use render pass to provide rendered scene as an input
 const renderScene = new RenderPass( scene, camera );
 
 const bloomPass = new UnrealBloomPass( new THREE.Vector2( window.innerWidth, window.innerHeight ), 1.5, 0.4, 0.85 );
-bloomPass.threshold = bloom.bloomThreshold;
-bloomPass.strength = bloom.bloomStrength;
-bloomPass.radius = bloom.bloomRadius;
+bloomPass.threshold = bloom.current.bloomThreshold;
+bloomPass.strength = bloom.current.bloomStrength;
+bloomPass.radius = bloom.current.bloomRadius;
 
-composer = new EffectComposer( renderer );
-composer.addPass( renderScene );
-composer.addPass( bloomPass );
+const bloomComposer = new EffectComposer( renderer );
+bloomComposer.renderToScreen = false;
+bloomComposer.addPass( renderScene );
+bloomComposer.addPass( bloomPass );
 
-// Check if we use that input
-function checkIfKey(key) {
-  switch (key) {
-    case 'KeyA': 
-      return true;
-    case 'KeyD':
-      return true;
-    default: 
-      return false;   
-  }
-}
+const finalPass = new ShaderPass(
+  new THREE.ShaderMaterial( {
+    uniforms: {
+      baseTexture: { value: null },
+      bloomTexture: { value: bloomComposer.renderTarget2.texture }
+    },
+    vertexShader: document.getElementById( 'vertexshader' ).textContent,
+    fragmentShader: document.getElementById( 'fragmentshader' ).textContent,
+    defines: {}
+  } ), "baseTexture"
+);
 
-// SOUND EXPERIMENT
+const finalComposer = new EffectComposer( renderer );
+finalComposer.addPass( renderScene );
+finalComposer.addPass( finalPass )
 
-// const synth = new Tone.Synth().toDestination();
-// const now = Tone.now()
-// const notesArr = ['G4', 'C2']
-// function notes (release) {
-//   console.log(active)
+//////////////////////////////////////
+// EVENT LISTENERS                 //
+////////////////////////////////////
 
-//   if (release) {
-//     console.log('ACTIVE')
-//     let activeNotes = []
- 
-//     active.forEach((item, index) => {
-//       if (item) activeNotes.push(notesArr[index])
-//       if (input) synth.triggerAttack(notesArr[index], now + (index + 1))
-//     })
-   
-//   } else {
-//     let activeNotes = []
-//     // for (let i = 0; i < active.length; i++) {
-//     //   console.log(input)
-//     //   if (input) synth.triggerAttack(notesArr[index], now)
-//     // }
-//     active.forEach((item, index) => {
-//       if (item) activeNotes.push(notesArr[index])
-//       // if (input) synth.triggerRelease(notesArr[index], now)
-//     })
-//     synth.triggerRelease(activeNotes, now)
-//   }
-// }
-
-// Event listeners
-// TRIGGER PRESS
-document.addEventListener('keydown', (e) => {
-  let isKey = checkIfKey(e.code);
-  if (isKey) {
-    switch (e.code) {
-      case 'KeyA': 
-        active[0] = true
-        trigger(0)
-        // notes(true)
-        break;
-      case 'KeyD':
-        active[1] = true
-        trigger(1)
-        break;
-      default: 
-        break; 
-    }
-  }
-
-});
-
-// RELEASE PRESS
-document.addEventListener('keyup', (e) => { 
-  let isKey = checkIfKey(e.code);
-  
-  if (isKey) {
-    switch (e.code) {
-      case 'KeyA': 
-        active[0] = false
-        release(0)
-        // notes(false)
-        break;
-      case 'KeyD':
-        active[1] = false
-        release(1)
-        // notes(false)
-        break;
-      default: 
-        break; 
-    }
-  }
-});
-
+// Camera movement
 document.addEventListener('mousemove', (e) => onMouseMoved(e, camera))
 
-let particles = {}
-function addParticles() {
-  const geometry = new THREE.BufferGeometry();
-  const vertices = [];
+// Read from socket information
+client.onmessage = function (message) { 
+  let data = JSON.parse(message.data)
+  let sensorId = data.sensor
 
-  for ( let i = 0; i < 500; i ++ ) {
-    const x = randomInteger(-params.boundary,params.boundary)
-    const y = randomInteger(-params.boundary,params.boundary)
-    const z = randomInteger(-params.boundary,params.boundary)
-
-    vertices.push( x, y, z );
+  // Check weighting is over limit
+  if (data.val > 100) { 
+    active[sensorId] = true
+    trigger(sensorId)
+  } else { 
+    active[sensorId] = false
+    release(sensorId)
   }
-
-  geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
-
-  const material = new THREE.PointsMaterial( { size: 1, color: 0xffffff, sizeAttenuation: false, alphaTest: 0.5} );
-  material.color.setHSL( 1, 1, 1 );
-
-  particles = new THREE.Points( geometry, material );
-  scene.add( particles );
 }
 
 function trigger (groupId) {
-  console.log('TRIGGERING GROUP' + ' ' + groupId)
   states[groupId] = 1 // trigger state
   if (!groups[groupId].children.length) {
     for (let i=0; i < 100; i++) {
@@ -217,15 +139,44 @@ function release (groupId) {
   states[groupId] = 2 // release state
 }
 
+//////////////////////////////////////
+// OBJECTS                         //
+////////////////////////////////////
+
+const groups = [new THREE.Group(), new THREE.Group()]
+const cubes = []
+
+const darkMaterial = new THREE.PointsMaterial( { size: 0.75, color: 0x000000, sizeAttenuation: false, alphaTest: 0.5, fog: false} );
+const lightMaterial = new THREE.PointsMaterial( { size: 0.75, color: 0xFFFF00, sizeAttenuation: false, alphaTest: 0.5, fog: false} );
+let particles;
+let geometry;
+
+function addParticles() {
+  geometry = new THREE.BufferGeometry();
+  const vertices = [];
+
+  for ( let i = 0; i < 500; i ++ ) {
+    const x = randomInteger(-sceneSettings.current.boundary,sceneSettings.current.boundary)
+    const y = randomInteger(-sceneSettings.current.boundary,sceneSettings.current.boundary)
+    const z = randomInteger(-sceneSettings.current.boundary,sceneSettings.current.boundary)
+
+    vertices.push( x, y, z );
+  }
+
+  geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
+
+  particles = new THREE.Points( geometry, darkMaterial );
+  scene.add( particles );
+}
+
 function generateSphere(groupId) {
-  const geometry  = new THREE.SphereGeometry( params.size, params.height, params.width )
+  const geometry  = new THREE.SphereGeometry( config.current.size, config.current.height, config.current.width )
   const material = new THREE.MeshStandardMaterial({ 
-    color: Math.random() * 0xffffff, 
-    emissive: 0x0, 
-    metalness:0.1, 
-    roughness:0.2, 
+    color: Math.random() * 0xffffff,
+    metalness:0, 
+    roughness:0, 
     transparent:true, 
-    opacity:0.1
+    opacity:0
   })
   
   // Set to array so we can access from outside scope
@@ -233,69 +184,149 @@ function generateSphere(groupId) {
   cubes[cubes.length] = new THREE.Mesh(geometry, material)
 
   // Set random position
-  const x = randomInteger(-params.boundary, params.boundary)
-  const y = randomInteger(-params.boundary, params.boundary)
-  const z = randomInteger(-params.boundary, params.boundary)
+  const x = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
+  const y = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
+  const z = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
   cubes[id].position.set(x,y,z)
 
   // Add to group
   groups[groupId].add(cubes[id])
 
   // Add to GUI
-  const cube = folder.addFolder(`Cube` + ' ' + id)
+  const cube = spheresFolder.addFolder(`Cube` + ' ' + id)
   cube.add(cubes[id], 'id')
   cube.add(cubes[id].scale, 'x', 0, 10)
 }
 
-function start () {			
-  // Generate initial 100 spheres
+function moveParticles(position) {
+  let vertices = []
+  for (let i = 0; i < 500; i++) {
+    let newPos = defineRange([position.x, position.y, position.z])
+    vertices.push(...newPos)
+  }
+
+  let float = new THREE.Float32BufferAttribute( vertices, 3 )
+  particles.geometry.setAttribute('position', float);
+  particles.geometry.attributes.position.needsUpdate = true;
+}
+
+function defineRange(position) {
+  const range = 1
+  let newPositions = []
+  position.forEach((item) => {
+     const upper = item + range
+     const lower = item - range
+     newPositions.push(randomInteger(lower, upper))
+  })
+
+  return newPositions
+}
+
+//////////////////////////////////////
+// RENDERING                       //
+////////////////////////////////////
+
+function start () {
   animate()
 }
 
 function animate() {
-  scene.fog = new THREE.FogExp2( 0x000000, params.fog );
+  scene.fog = new THREE.FogExp2( 0x000000, sceneSettings.current.fog );
+
+  if (states[0] == 1) {
+    // moveParticles(groups[0].children[0].position);
+  }
 
   if (particles.rotation) {
-    particles.rotation.y += input.particles.rotationSpeed
-    particles.rotation.x += input.particles.rotationSpeed
+    particles.rotation.y += input.sphere.rotationSpeed
+    particles.rotation.z += input.sphere.rotationSpeed
   }
 
   states.forEach((state, index) => {
-    // if (groups[index]) {
-    //   groups[index].rotation.x += input.sphere.rotationSpeed
-    //   groups[index].rotation.y += input.sphere.rotationSpeed
-    // }
+    if (groups[index]) {
+      
+      if (index == 1) {
+        groups[index].rotation.y += input.sphere.rotationSpeed / 2
+        groups[index].rotation.z += input.sphere.rotationSpeed
+      }
+      groups[index].rotation.x += input.sphere.rotationSpeed
+      groups[index].rotation.y += input.sphere.rotationSpeed
+    }
+
     for (let i = 0; i < groups[index].children.length; i++) {
       let object = groups[index].children[i]
       if (state == 1) {
-        if (object.material.opacity <= 1) object.material.opacity += 0.005
-      }
-      if (state == 2) {
-        object.material.opacity -= 0.005
-        if (object && object.material.opacity <= 0.01) {
-          // Look at alternative: instead of removing, look to keep low opacity and randomise coordinates if
-          // sphere is already generated
-          groups[index].remove(object)
+        if (object.material.opacity <= 0) {
+          const x = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
+          const y = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
+          const z = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
+          object.position.set(x,y,z)
         }
+        if (object.material.opacity <= 1) {
+          object.material.opacity += 0.005
+        }
+      }
+      if (state == 2 && object.material.opacity > 0) {
+        object.material.opacity -= 0.005
       }
     }   
   }) 
   
   window.requestAnimationFrame(animate)
-  composer.render();
+
+  gui.updateDisplay()
+  render()
 }
 
-// GUI
-gui.add(params, 'size', 0, 30)
-gui.add(params, 'height', 0, 128)
-gui.add(params, 'width', 0, 64)
-gui.add(params, 'fog', -0.02, 1)
-let folder = gui.addFolder('Spheres')
-folder.open()
+function render () { 
+  particles.material = darkMaterial
+  bloomComposer.render();
+  particles.material = lightMaterial
+  finalComposer.render()
+}
 
+//////////////////////////////////////
+// GUI                             //
+////////////////////////////////////
 
-start()
+gui.add(testing, 'state').name('Testing').listen().onChange((trigger) => {
+  if (trigger) {
+    config.testing, bloom.testing, sceneSettings.testing = true
+    scene.add(gridHelper)
+  } else { 
+    config.testing, bloom.testing, sceneSettings.testing = false
+    scene.remove(gridHelper)
+  }
+})
+
+let sceneFolder = gui.addFolder('Scene')
+sceneFolder.open()
+sceneFolder.add(sceneSettings.current, 'fog', 0, 0.2)
+sceneFolder.add(sceneSettings.current, 'boundary', 0, 10)
+
+// gui.add(config.current, 'size', 0, 30)
+// gui.add(config.current, 'height', 0, 128)
+// gui.add(config.current, 'width', 0, 64)
+
+let bloomFolder = gui.addFolder('Bloom')
+bloomFolder.add(bloom.current, 'bloomStrength', -4, 4).listen().onChange((value) => { 
+  console.log('CHANGE')
+  bloomPass.strength = value;
+  render();
+})
+bloomFolder.add(bloom.current, 'bloomThreshold', -2, 2).listen().onChange((value) => { 
+  bloomPass.threshold = value;
+	render();
+})
+bloomFolder.add(bloom.current, 'bloomRadius', -4, 4).listen().onChange((value) => { 
+  bloomPass.radius = value;
+  render()
+})
+
+let spheresFolder = gui.addFolder('Spheres')
+
 addParticles()
+start()
 
 
 
