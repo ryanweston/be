@@ -15,7 +15,7 @@ import { config, bloom, sceneSettings } from './config'
 
 var client = new WebSocket("ws://10.188.204.47:4000");
 const gui = new dat.GUI();
-const scene = new THREE.Scene()
+const scene = new THREE.Scene();
 
 // Testing toggle 
 let testing = { 
@@ -106,6 +106,40 @@ finalComposer.addPass( finalPass )
 // EVENT LISTENERS                 //
 ////////////////////////////////////
 
+// Testing: Event listener for keyboard
+document.addEventListener('keydown', (e) => { 
+  console.log(e.code)
+
+  switch (e.code) {
+    case 'KeyA': 
+      active[0] = true
+      trigger(0)
+      break;
+    case 'KeyD':
+      active[1] = true
+      trigger(1)
+      break;
+    default: 
+      break;
+  }
+})
+
+// Testing: Event listener for keyboard
+document.addEventListener('keyup', (e) => { 
+  switch (e.code) {
+    case 'KeyA': 
+      active[0] = false
+      release(0)
+      break;
+    case 'KeyD':
+      active[1] = false
+      release(1)
+      break;
+    default: 
+      break;
+  }
+})
+
 // Camera movement
 document.addEventListener('mousemove', (e) => onMouseMoved(e, camera))
 
@@ -125,6 +159,7 @@ client.onmessage = function (message) {
 }
 
 function trigger (groupId) {
+  console.log('TRIGGERING GROUP' + ' ' + groupId)
   states[groupId] = 1 // trigger state
   if (!groups[groupId].children.length) {
     for (let i=0; i < 100; i++) {
@@ -234,7 +269,7 @@ function animate() {
   scene.fog = new THREE.FogExp2( 0x000000, sceneSettings.current.fog );
 
   if (states[0] == 1) {
-    // moveParticles(groups[0].children[0].position);
+    moveParticles(groups[0].children[0].position);
   }
 
   if (particles.rotation) {
@@ -244,15 +279,15 @@ function animate() {
 
   states.forEach((state, index) => {
     if (groups[index]) {
-      
       if (index == 1) {
         groups[index].rotation.y += input.sphere.rotationSpeed / 2
         groups[index].rotation.z += input.sphere.rotationSpeed
       }
       groups[index].rotation.x += input.sphere.rotationSpeed
       groups[index].rotation.y += input.sphere.rotationSpeed
-    }
+    
 
+    
     for (let i = 0; i < groups[index].children.length; i++) {
       let object = groups[index].children[i]
       if (state == 1) {
@@ -270,6 +305,7 @@ function animate() {
         object.material.opacity -= 0.005
       }
     }   
+  }
   }) 
   
   window.requestAnimationFrame(animate)
@@ -291,10 +327,10 @@ function render () {
 
 gui.add(testing, 'state').name('Testing').listen().onChange((trigger) => {
   if (trigger) {
-    config.testing, bloom.testing, sceneSettings.testing = true
+    config.testing = bloom.testing = sceneSettings.testing = true
     scene.add(gridHelper)
   } else { 
-    config.testing, bloom.testing, sceneSettings.testing = false
+    config.testing = bloom.testing = sceneSettings.testing = false
     scene.remove(gridHelper)
   }
 })
@@ -310,7 +346,6 @@ sceneFolder.add(sceneSettings.current, 'boundary', 0, 10)
 
 let bloomFolder = gui.addFolder('Bloom')
 bloomFolder.add(bloom.current, 'bloomStrength', -4, 4).listen().onChange((value) => { 
-  console.log('CHANGE')
   bloomPass.strength = value;
   render();
 })
