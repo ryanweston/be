@@ -13,7 +13,7 @@ import { config, bloom, sceneSettings } from './config'
 // INITIAL SETUP & VARS            //
 ////////////////////////////////////
 
-var client = new WebSocket("ws://10.188.204.47:4000");
+var client = new WebSocket("ws://10.188.204.66:4000");
 const gui = new dat.GUI();
 const scene = new THREE.Scene();
 
@@ -115,9 +115,37 @@ document.addEventListener('keydown', (e) => {
       active[0] = true
       trigger(0)
       break;
-    case 'KeyD':
+    case 'KeyS':
       active[1] = true
       trigger(1)
+      break;
+    case 'KeyD':
+      active[2] = true
+      trigger(2)
+      break;
+    case 'KeyF':
+      active[3] = true
+      trigger(3)
+      break;
+    case 'KeyG':
+      active[4] = true
+      trigger(4)
+      break;
+    case 'KeyH':
+      active[5] = true
+      trigger(5)
+      break;
+    case 'KeyJ':
+      active[6] = true
+      trigger(6)
+      break;
+    case 'KeyK':
+      active[7] = true
+      trigger(7)
+      break;
+    case 'KeyL':
+      active[8] = true
+      trigger(8)
       break;
     default: 
       break;
@@ -131,9 +159,37 @@ document.addEventListener('keyup', (e) => {
       active[0] = false
       release(0)
       break;
-    case 'KeyD':
+    case 'KeyS':
       active[1] = false
       release(1)
+      break;
+    case 'KeyD':
+      active[2] = false
+      release(2)
+      break;
+    case 'KeyF':
+      active[3] = false
+      release(3)
+      break;
+    case 'KeyG':
+      active[4] = false
+      release(4)
+      break;
+    case 'KeyH':
+      active[5] = false
+      release(5)
+      break;
+    case 'KeyJ':
+      active[6] = false
+      release(6)
+      break;
+    case 'KeyK':
+      active[7] = false
+      release(7)
+      break;
+    case 'KeyL':
+      active[8] = false
+      release(8)
       break;
     default: 
       break;
@@ -148,8 +204,10 @@ client.onmessage = function (message) {
   let data = JSON.parse(message.data)
   let sensorId = data.sensor
 
+  console.log(message.data)
+
   // Check weighting is over limit
-  if (data.val > 100) { 
+  if (data.val === "ON") { 
     active[sensorId] = true
     trigger(sensorId)
   } else { 
@@ -159,7 +217,6 @@ client.onmessage = function (message) {
 }
 
 function trigger (groupId) {
-  console.log('TRIGGERING GROUP' + ' ' + groupId)
   states[groupId] = 1 // trigger state
   if (!groups[groupId].children.length) {
     for (let i=0; i < 100; i++) {
@@ -170,7 +227,6 @@ function trigger (groupId) {
 }
 
 function release (groupId) {
-  console.log('RELEASING GROUP' + ' ' + groupId)
   states[groupId] = 2 // release state
 }
 
@@ -178,7 +234,10 @@ function release (groupId) {
 // OBJECTS                         //
 ////////////////////////////////////
 
-const groups = [new THREE.Group(), new THREE.Group()]
+let groups = []
+for (let i = 0; i < active.length; i ++) {
+  groups.push(new THREE.Group())
+}
 const cubes = []
 
 const darkMaterial = new THREE.PointsMaterial( { size: 0.75, color: 0x000000, sizeAttenuation: false, alphaTest: 0.5, fog: false} );
