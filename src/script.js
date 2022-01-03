@@ -17,6 +17,10 @@ import Groups from './groups'
 var client = new WebSocket("ws://10.188.204.26:4000");
 const gui = new dat.GUI();
 const scene = new THREE.Scene();
+var clock = new THREE.Clock();
+clock.start()
+
+let pressAmount = 0
 
 // Testing toggle 
 let testing = { 
@@ -54,9 +58,9 @@ const gridHelper = new THREE.GridHelper( 10, 10 );
 ////////////////////////////////////
 
 const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 2000)
-camera.position.z = 15
-camera.position.y = 3
-camera.position.x = 3
+camera.position.z = 10
+camera.position.y = 0
+camera.position.x = 0
 scene.add(camera) 
 
 ///////////////////////////////////////
@@ -109,7 +113,7 @@ finalComposer.addPass( finalPass )
 
 // Testing: Event listener for keyboard
 document.addEventListener('keydown', (e) => { 
-  console.log(e.code)
+  // console.log(e.code)
 
   switch (e.code) {
     case 'KeyA': 
@@ -197,9 +201,6 @@ document.addEventListener('keyup', (e) => {
   }
 })
 
-// Camera movement
-document.addEventListener('mousemove', (e) => onMouseMoved(e, camera))
-
 // Read from socket information
 client.onmessage = function (message) { 
   let data = JSON.parse(message.data)
@@ -218,9 +219,10 @@ client.onmessage = function (message) {
 }
 
 function trigger (groupId) {
+  pressAmount++
   states[groupId] = 1 // trigger state
   if (!groups[groupId].children.length) {
-    for (let i=0; i < 15; i++) {
+    for (let i=0; i < 10; i++) {
       generateSphere(groupId)
     }
     scene.add(groups[groupId])
@@ -228,6 +230,7 @@ function trigger (groupId) {
 }
 
 function release (groupId) {
+  pressAmount--
   states[groupId] = 2 // release state
 }
 
@@ -265,9 +268,27 @@ function addParticles() {
 }
 
 function generateSphere(groupId) {
+  console.log(groupId)
   const geometry  = new THREE.SphereGeometry( config.current.size, config.current.height, config.current.width )
+  let color = '0xffffff'
+  if(groupId === 0){
+    color = '#964B00'
+  }
+  if(groupId === 1){
+    color = '#C89D7C'
+  }
+  if(groupId === 2){
+    color = '#90ee90'
+  }
+  if(groupId === 3){
+    color = '#00FF00'
+  }
+  if(groupId === 7){
+    color = '#0000FF'
+  }
+  
   const material = new THREE.MeshStandardMaterial({ 
-    color: 0xffffff,
+    color: color,
     metalness:0, 
     roughness:0, 
     transparent:true, 
@@ -285,17 +306,17 @@ function generateSphere(groupId) {
 
   // Set random position
   const x = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
-  const y = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
+  const y = randomInteger(-sceneSettings.current.boundary/10, sceneSettings.current.boundary/10)
   const z = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
   cubes[id].position.set(x,y,z)
 
   // Add to group
   groups[groupId].add(cubes[id])
 
-  // Add to GUI
-  const cube = spheresFolder.addFolder(`Cube` + ' ' + id)
-  cube.add(cubes[id], 'id')
-  cube.add(cubes[id].scale, 'x', 0, 10)
+  // // Add to GUI
+  // const cube = spheresFolder.addFolder(`Cube` + ' ' + id)
+  // cube.add(cubes[id], 'id')
+  // cube.add(cubes[id].scale, 'x', 0, 10)
 }
 
 function moveParticles(position) {
@@ -344,36 +365,82 @@ function animate() {
 
   states.forEach((state, index) => {
     if (groups[index]) {
-      if (index == 1) {
-        groups[index].rotation.y += input.sphere.rotationSpeed / 2
-        groups[index].rotation.z += input.sphere.rotationSpeed
+      let yDiv = 0
+      let diff = 0.3
+      // let boundMul = 1
+      if (index === 0) {
+        yDiv = -3
       }
-      groups[index].rotation.x += input.sphere.rotationSpeed
-      groups[index].rotation.y += input.sphere.rotationSpeed
-    
+      if (index === 1) {
+        yDiv = -2.5
+        diff = 0.4
+      }
+      if (index === 2) {
+        yDiv = -2
+        diff = 0.2
+      }
+      if (index === 3) {
+        yDiv = -1
+        diff = 0.2
+      }
+      if (index === 4) {
+        yDiv = -0
+        diff = 0.1
+      }
+      if (index === 5) {
+        yDiv = 1
+        diff = 0
+      }
+      if (index === 6) {
+        yDiv = 2
+        diff = 0.1
+      }
+      if (index === 7) {
+        yDiv = 3
+        diff = 0.2
+      }
+      if (index === 8) {
+        yDiv = 4
+        diff = 0.3
+      }
+      
+      // if (index == 1) {
+      //   groups[index].rotation.y += input.sphere.rotationSpeed / 2
+      //   groups[index].rotation.z += input.sphere.rotationSpeed
+      // }
+      // groups[index].rotation.x += input.sphere.rotationSpeed
+      // groups[index].rotation.y += input.sphere.rotationSpeed
 
     
     for (let i = 0; i < groups[index].children.length; i++) {
       let object = groups[index].children[i]
       if (state == 1) {
         if (object.material.opacity <= 0) {
-          const x = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
-          const y = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
-          const z = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
+          const x = randomInteger(-sceneSettings.current.boundary * 2, sceneSettings.current.boundary * 2)
+          const y = randomInteger(yDiv, yDiv+diff) 
+          const z = randomInteger(-sceneSettings.current.boundary, 0)
           object.position.set(x,y,z)
         }
+        object.position.z = object.position.z + Math.sin(clock.getElapsedTime()*(i/10))/80
+
+        // object.position.x - object.position.x = Math.sin(clock.getElapsedTime()/(Math.cos(clock.getElapsedTime()-(10*i)))/100)/(100)
+        // object.position.y = object.position.y - Math.cos(clock.getElapsedTime()/(i/Math.cos(clock.getElapsedTime()-(10*i))))/(500)
+        // object.position.y = object.position.y - Math.cos(clock.getElapsedTime()/(i/randomInteger(1,2)))/(100 + i)
+        // object.position.z = object.position.z - Math.cos(clock.getElapsedTime()/(i/randomInteger(1,2)))/(100 + i)
+        // const z = Math.cos(clock.getElapsedTime() + (i * 10))
+        // object.position.set(x,y,z)
         if (object.material.opacity <= 1) {
           object.material.opacity += 0.005
         }
       }
       if (state == 2 && object.material.opacity > 0) {
-        object.material.opacity -= 0.005
+        object.material.opacity -= 0.009
       }
     }   
   }
   }) 
-  
   window.requestAnimationFrame(animate)
+  
 
   gui.updateDisplay()
   render()

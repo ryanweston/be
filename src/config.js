@@ -4,13 +4,13 @@
 
 const sceneDefault = { 
   fog: 0.1,
-  boundary: 10,
+  boundary: 5,
   testing: true
 } 
 
 const sceneTest = { 
   fog: 0,
-  boundary: 2,
+  boundary: 5,
   testing: false
 } 
 
@@ -19,13 +19,13 @@ const sceneTest = {
 ////////////////////////////////////
 
 const defaultParams = { 
-  size: 0.5,
+  size: 0.3,
   height: 64,
   width: 32,
 } 
 
 const testParams = { 
-  size: 1,
+  size: 0.3,
   height: 100,
   width: 32,
 } 
