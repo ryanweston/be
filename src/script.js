@@ -8,12 +8,13 @@ import { ShaderPass } from './postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from './postprocessing/UnrealBloomPass.js';
 import { randomInteger, onMouseMoved } from './controls'
 import { config, bloom, sceneSettings } from './config'
+import Groups from './groups'
 
 //////////////////////////////////////
 // INITIAL SETUP & VARS            //
 ////////////////////////////////////
 
-var client = new WebSocket("ws://10.188.204.66:4000");
+var client = new WebSocket("ws://10.188.204.26:4000");
 const gui = new dat.GUI();
 const scene = new THREE.Scene();
 
@@ -219,7 +220,7 @@ client.onmessage = function (message) {
 function trigger (groupId) {
   states[groupId] = 1 // trigger state
   if (!groups[groupId].children.length) {
-    for (let i=0; i < 100; i++) {
+    for (let i=0; i < 15; i++) {
       generateSphere(groupId)
     }
     scene.add(groups[groupId])
@@ -266,12 +267,17 @@ function addParticles() {
 function generateSphere(groupId) {
   const geometry  = new THREE.SphereGeometry( config.current.size, config.current.height, config.current.width )
   const material = new THREE.MeshStandardMaterial({ 
-    color: Math.random() * 0xffffff,
+    color: 0xffffff,
     metalness:0, 
     roughness:0, 
     transparent:true, 
     opacity:0
-  })
+  }) 
+
+  // Get and set colour from group config 
+  // const colour = Groups[groupId].colour
+  // console.log(Groups[groupId])
+  // material.color.setHSL( colour.h, colour.s, colour.l )
   
   // Set to array so we can access from outside scope
   const id = cubes.length
@@ -328,7 +334,7 @@ function animate() {
   scene.fog = new THREE.FogExp2( 0x000000, sceneSettings.current.fog );
 
   if (states[0] == 1) {
-    moveParticles(groups[0].children[0].position);
+    // moveParticles(groups[0].children[0].position);
   }
 
   if (particles.rotation) {
