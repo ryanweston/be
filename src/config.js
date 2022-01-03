@@ -4,7 +4,7 @@
 
 const sceneDefault = { 
   fog: 0.1,
-  boundary: 10,
+  boundary: 8,
   testing: true
 } 
 

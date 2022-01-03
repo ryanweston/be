@@ -1,58 +1,82 @@
-function randomiseColour (range) {
+import { randomInteger } from './controls'
+
+
+function randomiseColour (hVal, sRange, lRange) {
   console.log('colour setting')
-  const h = 240;
-  const s = Math.floor(Math.random() * 100);
-  const l = Math.floor(Math.random() * 100);
-  let color = { h, s, l }
+  const h = hVal;
+  const s = randomInteger(sRange[0], sRange[1])
+  const l = randomInteger(lRange[0], lRange[1])
+  let color = 'hsl(' + h + ', ' + s + '%, ' + l + '%)';
   return color
 }
 
-const Groups = [ 
+export const Groups = [ 
   { 
     id: 0,
     type: 'Mud',
-    colour: randomiseColour(),
+    orbs: true,
+    sound: false,
+    colour: randomiseColour(37, [60, 80], [30, 40]),
+    action: false,
   },
   { 
     id: 1,
     type: 'Grass',
-    colour: randomiseColour(),
+    orbs: true,
+    sound: false,
+    colour: randomiseColour(120, [30, 40], [30,40]),
+    action: false,
   },
   { 
     id: 2,
     type: 'Wind',
-    colour: randomiseColour(),
+    orbs: false,
+    sound: false,
+    action: false,
   },
   { 
     id: 3,
     type: 'Sky',
-    colour: randomiseColour(),
+    orbs: false,
+    sound: false,
+    action: 'setBackground'
   },
   { 
     id: 4,
     type: 'Trees',
-    colour: randomiseColour(),
+    orbs: false,
+    sound: false,
+    action: false,
   },
   { 
     id: 5,
     type: 'Water',
-    colour: randomiseColour(),
+    orbs: true,
+    sound: false,
+    colour: randomiseColour(240, [30, 40], [30,40]),
+    action: false,
   },
   { 
     id: 6,
     type: 'Animals',
-    colour: randomiseColour(),
+    orbs: false,
+    sound: false,
+    action: false,
   },
   { 
     id: 7,
     type: 'Flowers',
-    colour: randomiseColour(),
+    orbs: true,
+    sound: false,
+    colour: randomiseColour(284, [30, 40], [40,50]),
+    action: false,
   },
   { 
     id: 8,
     type: 'Grass',
-    colour: randomiseColour(),
+    orbs: true,
+    sound: false,
+    colour: randomiseColour(120, [30, 40], [40,50]),
+    action: false,
   },
 ]
-
-export default { Groups }

@@ -6,9 +6,9 @@ import { EffectComposer } from './postprocessing/EffectComposer.js';
 import { RenderPass } from './postprocessing/RenderPass.js';
 import { ShaderPass } from './postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from './postprocessing/UnrealBloomPass.js';
-import { randomInteger, onMouseMoved } from './controls'
+import { randomInteger } from './controls'
 import { config, bloom, sceneSettings } from './config'
-import Groups from './groups'
+import { Groups, actions } from './groups'
 
 //////////////////////////////////////
 // INITIAL SETUP & VARS            //
@@ -38,6 +38,32 @@ let active = [0,0,0,0,0,0,0,0,0]
 // 0 - Default, 1 - Adding or added, 2 - Released or releasing
 let states = [0,0,0,0,0,0,0,0,0] 
 
+// Initialise for background setting
+let activeBg
+
+// Define functions for pad actions
+const padActions = { 
+  setBackground: { 
+    trigger: () => {
+      if (!activeBg) {
+        activeBg = true
+        bloomPass.radius = 1.4
+        bloomPass.strength = 5.5
+        render()
+      }
+    },
+    release: () => {
+      if (activeBg) {
+        activeBg = false
+        bloomPass.radius = bloom.current.bloomRadius;
+        bloomPass.strength = bloom.current.bloomStrength;
+        render()
+      }
+    }
+  }
+}
+
+
 //////////////////////////////////////
 // Lights & scene extras           //
 ////////////////////////////////////
@@ -47,14 +73,14 @@ const light = new THREE.AmbientLight( 0x404040 );
 scene.add( light );
 
 // Grid helper
-const gridHelper = new THREE.GridHelper( 10, 10 );
+const gridHelper = new THREE.GridHelper( -10, 10 );
 
 //////////////////////////////////////
 // CAMERA                          //
 ////////////////////////////////////
 
-const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 2000)
-camera.position.z = 15
+const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 1, 100)
+camera.position.z = 10
 camera.position.y = 3
 camera.position.x = 3
 scene.add(camera) 
@@ -102,6 +128,8 @@ const finalPass = new ShaderPass(
 const finalComposer = new EffectComposer( renderer );
 finalComposer.addPass( renderScene );
 finalComposer.addPass( finalPass )
+
+scene.background = new THREE.Color( 0x000000 );
 
 //////////////////////////////////////
 // EVENT LISTENERS                 //
@@ -197,9 +225,6 @@ document.addEventListener('keyup', (e) => {
   }
 })
 
-// Camera movement
-document.addEventListener('mousemove', (e) => onMouseMoved(e, camera))
-
 // Read from socket information
 client.onmessage = function (message) { 
   let data = JSON.parse(message.data)
@@ -219,8 +244,15 @@ client.onmessage = function (message) {
 
 function trigger (groupId) {
   states[groupId] = 1 // trigger state
-  if (!groups[groupId].children.length) {
-    for (let i=0; i < 15; i++) {
+
+  // Group has an action to perform
+  if (Groups[groupId].action) {
+    padActions[Groups[groupId].action].trigger()
+  }
+
+  // Group has orbs to generate
+  if (!groups[groupId].children.length && Groups[groupId].orbs) {
+    for (let i=0; i < 30; i++) {
       generateSphere(groupId)
     }
     scene.add(groups[groupId])
@@ -229,12 +261,16 @@ function trigger (groupId) {
 
 function release (groupId) {
   states[groupId] = 2 // release state
+  if (Groups[groupId].action) {
+    padActions[Groups[groupId].action].release()
+  }
 }
 
 //////////////////////////////////////
 // OBJECTS                         //
 ////////////////////////////////////
 
+// Create groups
 let groups = []
 for (let i = 0; i < active.length; i ++) {
   groups.push(new THREE.Group())
@@ -266,18 +302,15 @@ function addParticles() {
 
 function generateSphere(groupId) {
   const geometry  = new THREE.SphereGeometry( config.current.size, config.current.height, config.current.width )
+  const colour = Groups[groupId].colour
+
   const material = new THREE.MeshStandardMaterial({ 
-    color: 0xffffff,
+    color: colour,
     metalness:0, 
     roughness:0, 
     transparent:true, 
     opacity:0
-  }) 
-
-  // Get and set colour from group config 
-  // const colour = Groups[groupId].colour
-  // console.log(Groups[groupId])
-  // material.color.setHSL( colour.h, colour.s, colour.l )
+  })
   
   // Set to array so we can access from outside scope
   const id = cubes.length
@@ -331,45 +364,46 @@ function start () {
 }
 
 function animate() {
-  scene.fog = new THREE.FogExp2( 0x000000, sceneSettings.current.fog );
+  // Add fog to the scene
+  // scene.fog = new THREE.FogExp2( 0x404040, sceneSettings.current.fog );
 
-  if (states[0] == 1) {
-    // moveParticles(groups[0].children[0].position);
-  }
+  // if (states[0] == 1) {
+  //   moveParticles(groups[0].children[0].position);
+  // }
 
+  // Rotate particles
   if (particles.rotation) {
     particles.rotation.y += input.sphere.rotationSpeed
     particles.rotation.z += input.sphere.rotationSpeed
   }
 
+  // Check group exists & handle appearing + disappearing & appearing
   states.forEach((state, index) => {
-    if (groups[index]) {
-      if (index == 1) {
-        groups[index].rotation.y += input.sphere.rotationSpeed / 2
-        groups[index].rotation.z += input.sphere.rotationSpeed
-      }
+    // Ensure that orbs are already generated & it should generate orbs
+    if (groups[index].children.length && Groups[index].orbs) {
       groups[index].rotation.x += input.sphere.rotationSpeed
       groups[index].rotation.y += input.sphere.rotationSpeed
-    
 
-    
-    for (let i = 0; i < groups[index].children.length; i++) {
-      let object = groups[index].children[i]
-      if (state == 1) {
-        if (object.material.opacity <= 0) {
-          const x = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
-          const y = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
-          const z = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
-          object.position.set(x,y,z)
+      for (let i = 0; i < groups[index].children.length; i++) {
+        let object = groups[index].children[i]
+        if (state == 1) {
+          // Check if group was off the scene, read with random positions
+          if (object.material.opacity <= 0) {
+            const x = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
+            const y = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
+            const z = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
+            object.position.set(x,y,z)
+          }
+          // Increase opacity of the object each frame until it's 100%(1).
+          if (object.material.opacity <= 1) {
+            object.material.opacity += 0.005
+          }
         }
-        if (object.material.opacity <= 1) {
-          object.material.opacity += 0.005
+        // If being release & still visible, remove
+        if (state == 2 && object.material.opacity > 0) {
+          object.material.opacity -= 0.005
         }
-      }
-      if (state == 2 && object.material.opacity > 0) {
-        object.material.opacity -= 0.005
-      }
-    }   
+      }   
   }
   }) 
   
@@ -379,9 +413,16 @@ function animate() {
   render()
 }
 
-function render () { 
+function render () {
+  // Add dark materials, to change after initial bloomPass
   particles.material = darkMaterial
+  scene.background = new THREE.Color(0x000000)
+  scene.fog = new THREE.FogExp2( 0x000000, sceneSettings.current.fog );
   bloomComposer.render();
+
+  // Change to colours intended to avoid bloom effect
+  if (activeBg) scene.background = new THREE.Color(0x50b8e7)
+  if (activeBg) scene.fog = new THREE.FogExp2( 0x50b8e7, sceneSettings.current.fog );
   particles.material = lightMaterial
   finalComposer.render()
 }
@@ -404,10 +445,6 @@ let sceneFolder = gui.addFolder('Scene')
 sceneFolder.open()
 sceneFolder.add(sceneSettings.current, 'fog', 0, 0.2)
 sceneFolder.add(sceneSettings.current, 'boundary', 0, 10)
-
-// gui.add(config.current, 'size', 0, 30)
-// gui.add(config.current, 'height', 0, 128)
-// gui.add(config.current, 'width', 0, 64)
 
 let bloomFolder = gui.addFolder('Bloom')
 bloomFolder.add(bloom.current, 'bloomStrength', -4, 4).listen().onChange((value) => { 
