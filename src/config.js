@@ -19,13 +19,13 @@ const sceneTest = {
 ////////////////////////////////////
 
 const defaultParams = { 
-  size: 0.3,
+  size: 0.45,
   height: 64,
   width: 32,
 } 
 
 const testParams = { 
-  size: 0.3,
+  size: 0.45,
   height: 100,
   width: 32,
 } 

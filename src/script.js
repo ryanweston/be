@@ -369,10 +369,10 @@ function animate() {
       let diff = 0.3
       // let boundMul = 1
       if (index === 0) {
-        yDiv = -3
+        yDiv = -3.5
       }
       if (index === 1) {
-        yDiv = -2.5
+        yDiv = -3
         diff = 0.4
       }
       if (index === 2) {
@@ -421,7 +421,7 @@ function animate() {
           const z = randomInteger(-sceneSettings.current.boundary, 0)
           object.position.set(x,y,z)
         }
-        object.position.z = object.position.z + Math.sin(clock.getElapsedTime()*(i/10))/80
+        object.position.z = object.position.z + Math.sin(clock.getElapsedTime()*(i/10))/200
 
         // object.position.x - object.position.x = Math.sin(clock.getElapsedTime()/(Math.cos(clock.getElapsedTime()-(10*i)))/100)/(100)
         // object.position.y = object.position.y - Math.cos(clock.getElapsedTime()/(i/Math.cos(clock.getElapsedTime()-(10*i))))/(500)
