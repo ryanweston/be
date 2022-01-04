@@ -9,6 +9,7 @@ import { UnrealBloomPass } from './postprocessing/UnrealBloomPass.js';
 import { randomInteger } from './controls'
 import { config, bloom, sceneSettings } from './config'
 import { Groups } from './groups'
+import { ACESFilmicToneMapping } from 'three';
 
 //////////////////////////////////////
 // INITIAL SETUP & VARS            //
@@ -18,10 +19,10 @@ var client = new WebSocket("ws://10.188.204.26:4000");
 // const gui = new dat.GUI();
 const scene = new THREE.Scene();
 
-// Testing toggle 
-let testing = { 
-  state: false
-}
+// Testing toggle for gui
+// let testing = { 
+//   state: false
+// }
 
 // Inputs 
 const input = { 
@@ -40,6 +41,19 @@ let states = [0,0,0,0,0,0,0,0,0]
 let currentlyPressed = [false,false,false,false,false,false,false,false,false] 
 let currentlyPressedCount = 0
 
+// Create groups
+let orbGroups = []
+for (let i = 0; i < 9; i ++) {
+  orbGroups.push(new THREE.Group())
+}
+const orbs = []
+
+// 10 groups - one for initial render of particles
+let particleGroups = []
+for (let i = 0; i < 10; i ++) {
+  particleGroups.push(new THREE.Group())
+}
+const particles = []
 
 //////////////////////////////////////
 // Lights & scene extras           //
@@ -50,7 +64,7 @@ const light = new THREE.AmbientLight( 0x404040 );
 scene.add( light );
 
 // Grid helper
-const gridHelper = new THREE.GridHelper( -10, 10 );
+// const gridHelper = new THREE.GridHelper( -10, 10 );
 
 
 //////////////////////////////////////
@@ -117,13 +131,12 @@ const startButton = document.getElementById( 'startButton' );
 startButton.addEventListener( 'click', init );
 
 function init() {
-
   const overlay = document.getElementById( 'overlay' );
   overlay.remove();
+
   //////////////////////////////////////
   // SOUND                           //
   ////////////////////////////////////
-
 
   const beesElement = document.getElementById( 'bees' )
 
@@ -132,6 +145,7 @@ function init() {
   const waterElement = document.getElementById( 'water' )
 
   const windElement = document.getElementById( 'wind' )
+
   // create an AudioListener and add it to the camera
   const listener = new THREE.AudioListener();
 
@@ -159,7 +173,8 @@ function init() {
   wind.setMediaElementSource(windElement)
   wind.setLoop(true)
   wind.setVolume( 0 )
-  console.log( wind.getVolume(0))
+  // console.log( wind.getVolume(0))
+
   // Define functions for pad actions
   const padActions = { 
     birds: { 
@@ -187,9 +202,6 @@ function init() {
       }
     }
   }
-
-
-
 
   // Testing: Event listener for keyboard
   document.addEventListener('keydown', (e) => { 
@@ -280,6 +292,7 @@ function init() {
 
   function trigger (groupId) {
     states[groupId] = 1 // trigger state
+
     // Group has an action to perform
     if (currentlyPressed[groupId] === false) {
       currentlyPressed[groupId] = true
@@ -292,12 +305,21 @@ function init() {
     }
 
     // Group has orbs to generate
-    if (!groups[groupId].children.length && Groups[groupId].orbs) {
+    if (!orbGroups[groupId].children.length && Groups[groupId].orbs) {
       for (let i=0; i < 30; i++) {
         generateSphere(groupId)
       }
-      scene.add(groups[groupId])
+      scene.add(orbGroups[groupId])
     }
+
+    // Add particles each pad
+    if (!scene.getObjectByName(groupId.toString())) {
+      // If particles haven't already been created, create
+      if (!particleGroups[groupId].children.length) {
+        generateParticles(groupId);
+      }
+      scene.add(particleGroups[groupId])
+    }  
 }
 
   function release (groupId) {
@@ -313,23 +335,16 @@ function init() {
   // OBJECTS                         //
   ////////////////////////////////////
 
-  // Create groups
-  let groups = []
-  for (let i = 0; i < 9; i ++) {
-    groups.push(new THREE.Group())
-  }
-  const cubes = []
-
   const darkMaterial = new THREE.PointsMaterial( { size: 0.75, color: 0x000000, sizeAttenuation: false, alphaTest: 0.5, fog: false} );
   const lightMaterial = new THREE.PointsMaterial( { size: 0.75, color: 0xFFFF00, sizeAttenuation: false, alphaTest: 0.5, fog: false} );
-  let particles;
-  let geometry;
 
-  function addParticles() {
-    geometry = new THREE.BufferGeometry();
+
+
+  function generateParticles(groupId) {
+    let geometry = new THREE.BufferGeometry();
     const vertices = [];
 
-    for ( let i = 0; i < 500; i ++ ) {
+    for ( let i = 0; i < 60; i ++ ) {
       const x = randomInteger(-sceneSettings.current.boundary,sceneSettings.current.boundary)
       const y = randomInteger(-sceneSettings.current.boundary,sceneSettings.current.boundary)
       const z = randomInteger(-sceneSettings.current.boundary,sceneSettings.current.boundary)
@@ -339,8 +354,11 @@ function init() {
 
     geometry.setAttribute( 'position', new THREE.Float32BufferAttribute( vertices, 3 ) );
 
-    particles = new THREE.Points( geometry, darkMaterial );
-    scene.add( particles );
+    const id = particles.length
+
+    particles[id] = new THREE.Points( geometry, darkMaterial );
+    particleGroups[groupId].add(particles[id])
+    particleGroups[groupId].name = id.toString();
   }
 
   function generateSphere(groupId) {
@@ -356,46 +374,22 @@ function init() {
     })
     
     // Set to array so we can access from outside scope
-    const id = cubes.length
-    cubes[cubes.length] = new THREE.Mesh(geometry, material)
+    const id = orbs.length
+    orbs[id] = new THREE.Mesh(geometry, material)
 
     // Set random position
     const x = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
     const y = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
     const z = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
-    cubes[id].position.set(x,y,z)
+    orbs[id].position.set(x,y,z)
 
     // Add to group
-    groups[groupId].add(cubes[id])
+    orbGroups[groupId].add(orbs[id])
 
     // Add to GUI
-    // const cube = spheresFolder.addFolder(`Cube` + ' ' + id)
-    // cube.add(cubes[id], 'id')
-    // cube.add(cubes[id].scale, 'x', 0, 10)
-  }
-
-  function moveParticles(position) {
-    let vertices = []
-    for (let i = 0; i < 500; i++) {
-      let newPos = defineRange([position.x, position.y, position.z])
-      vertices.push(...newPos)
-    }
-
-    let float = new THREE.Float32BufferAttribute( vertices, 3 )
-    particles.geometry.setAttribute('position', float);
-    particles.geometry.attributes.position.needsUpdate = true;
-  }
-
-  function defineRange(position) {
-    const range = 1
-    let newPositions = []
-    position.forEach((item) => {
-      const upper = item + range
-      const lower = item - range
-      newPositions.push(randomInteger(lower, upper))
-    })
-
-    return newPositions
+    // const orb = spheresFolder.addFolder(`Orb` + ' ' + id)
+    // orb.add(orbs[id], 'id')
+    // orb.add(orbs[id].scale, 'x', 0, 10)
   }
 
   //////////////////////////////////////
@@ -403,6 +397,11 @@ function init() {
   ////////////////////////////////////
 
   function start () {
+    // generate initial particles
+    generateParticles(9)
+    scene.add(particleGroups[9])
+
+    // start animating / rendering
     animate()
   }
 
@@ -440,48 +439,48 @@ function init() {
 
     bees.setVolume(beesVolume)
 
-    // Add fog to the scene
-    // scene.fog = new THREE.FogExp2( 0x404040, sceneSettings.current.fog );
-
-    // if (states[0] == 1) {
-    //   moveParticles(groups[0].children[0].position);
-    // }
-
     // Rotate particles
-    if (particles.rotation) {
-      particles.rotation.y += input.sphere.rotationSpeed
-      particles.rotation.z += input.sphere.rotationSpeed
-    }
+    particleGroups.forEach((state, index) => {
+      if (particleGroups[index].children.length) {
+        particleGroups[index].rotation.y += input.sphere.rotationSpeed
+        particleGroups[index].rotation.z += input.sphere.rotationSpeed
+      }
+    })
 
     // Check group exists & handle appearing + disappearing & appearing
     states.forEach((state, index) => {
       // Ensure that orbs are already generated & it should generate orbs
-      if (groups[index].children.length && Groups[index].orbs) {
-        groups[index].rotation.x += input.sphere.rotationSpeed
-        groups[index].rotation.y += input.sphere.rotationSpeed
+      if (orbGroups[index].children.length && Groups[index].orbs) {
+        orbGroups[index].rotation.x += input.sphere.rotationSpeed
+        orbGroups[index].rotation.y += input.sphere.rotationSpeed
 
-        for (let i = 0; i < groups[index].children.length; i++) {
-          let object = groups[index].children[i]
-          if (state == 1) {
-            // Check if group was off the scene, read with random positions
-            if (object.material.opacity <= 0) {
-              const x = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
-              const y = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
-              const z = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
-              object.position.set(x,y,z)
-            }
-            // Increase opacity of the object each frame until it's 100%(1).
-            if (object.material.opacity <= 1) {
-              object.material.opacity += 0.005
-            }
+      // Loop through children (orbs) of the groups
+      for (let i = 0; i < orbGroups[index].children.length; i++) {
+        let object = orbGroups[index].children[i]
+        if (state == 1) {
+          // Check if group was off the scene, read with random positions
+          if (object.material.opacity <= 0) {
+            const x = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
+            const y = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
+            const z = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
+            object.position.set(x,y,z)
           }
+          // Increase opacity of the object each frame until it's 100%(1).
+          if (object.material.opacity <= 1) {
+            object.material.opacity += 0.005
+          }
+        }
+        if (state == 2) {
+          scene.remove(particleGroups[index])
           // If being release & still visible, remove
-          if (state == 2 && object.material.opacity > 0) {
+          if (object.material.opacity > 0) {
             object.material.opacity -= 0.005
           }
-        }   
+        }
+        
+      }   
     }
-    }) 
+  })
     
     window.requestAnimationFrame(animate)
 
@@ -491,12 +490,18 @@ function init() {
 
   function render () {
     // Add dark materials, to change after initial bloomPass
-    particles.material = darkMaterial
-    scene.background = new THREE.Color(0x000000)
-    scene.fog = new THREE.FogExp2( 0x000000, sceneSettings.current.fog );
+    // Will ensure bloom doesn't effect it.
+    // particles.material = darkMaterial
+    particles.forEach((group) => {
+      group.material = darkMaterial
+    })
+    scene.fog = new THREE.FogExp2( 0x000000, sceneSettings.current.fog )
     bloomComposer.render();
 
-    particles.material = lightMaterial
+    particles.forEach((group) => {
+      group.material = lightMaterial  
+    })
+    // particles.material = lightMaterial
     finalComposer.render()
   }
 
@@ -534,10 +539,7 @@ function init() {
   // })
 
   // let spheresFolder = gui.addFolder('Spheres')
-
-  addParticles()
   start()
-
 }
 
 
