@@ -361,7 +361,7 @@ function init() {
 
   function generateSphere(groupId) {
     const geometry  = new THREE.SphereGeometry( config.current.size, config.current.height, config.current.width )
-    const colour = Groups[groupId].colour
+    const colour = Groups[groupId].colour()
 
     const material = new THREE.MeshStandardMaterial({ 
       color: colour,
@@ -459,8 +459,13 @@ function init() {
       for (let i = 0; i < orbGroups[index].children.length; i++) {
         let object = orbGroups[index].children[i]
         if (state == 1) {
-          // Check if group was off the scene, read with random positions
+          // Check if group was off the scene, regenerate generative aspects
           if (object.material.opacity <= 0) {
+            // Regenerate colour
+            const colour = Groups[index].colour()
+            object.material.colour = colour
+
+            // Set positions again
             const x = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
             const y = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
             const z = randomInteger(-sceneSettings.current.boundary, sceneSettings.current.boundary)
