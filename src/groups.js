@@ -30,22 +30,25 @@ export const Groups = [
   { 
     id: 2,
     type: 'Wind',
-    orbs: false,
+    orbs: true,
     sound: false,
-    action: false,
+    colour: randomiseColour(120, [30, 40], [30,40]),
+    action: 'wind',
   },
   { 
     id: 3,
     type: 'Sky',
-    orbs: false,
+    orbs: true,
     sound: false,
-    action: 'setBackground'
+    colour: randomiseColour(120, [30, 40], [30,40]),
+    action: false
   },
   { 
     id: 4,
     type: 'Trees',
-    orbs: false,
+    orbs: true,
     sound: false,
+    colour: randomiseColour(120, [30, 40], [30,40]),
     action: false,
   },
   { 
@@ -54,14 +57,15 @@ export const Groups = [
     orbs: true,
     sound: false,
     colour: randomiseColour(240, [30, 40], [30,40]),
-    action: false,
+    action: 'water',
   },
   { 
     id: 6,
-    type: 'Animals',
-    orbs: false,
-    sound: false,
-    action: false,
+    type: 'Birds',
+    orbs: true,
+    colour: randomiseColour(120, [40, 60], [40,60]),
+    sound: true,
+    action: 'birds',
   },
   { 
     id: 7,
