@@ -36,7 +36,7 @@ const input = {
 // 0 - Default, 1 - Adding or added, 2 - Released or releasing
 let states = [0,0,0,0,0,0,0,0,0] 
 
-// 0 - Default, 1 - Adding or added, 2 - Released or releasing
+// track active sensors and amount of sensors active
 let currentlyPressed = [false,false,false,false,false,false,false,false,false] 
 let currentlyPressedCount = 0
 
@@ -132,10 +132,12 @@ function init() {
   const waterElement = document.getElementById( 'water' )
 
   const windElement = document.getElementById( 'wind' )
+
   // create an AudioListener and add it to the camera
   const listener = new THREE.AudioListener();
 
   camera.add( listener )
+
   const bees = new THREE.Audio( listener )
   bees.setMediaElementSource(beesElement)
   bees.setLoop(true)
@@ -167,7 +169,6 @@ function init() {
         birdsElement.play()
       },
       release: () => {
-        birdsElement.pause()
       }
     },
     water: { 
@@ -193,8 +194,6 @@ function init() {
 
   // Testing: Event listener for keyboard
   document.addEventListener('keydown', (e) => { 
-    console.log(e.code)
-
     switch (e.code) {
       case 'KeyA': 
         trigger(0)
@@ -280,7 +279,8 @@ function init() {
 
   function trigger (groupId) {
     states[groupId] = 1 // trigger state
-    // Group has an action to perform
+      
+    // if sensor is currently off
     if (currentlyPressed[groupId] === false) {
       currentlyPressed[groupId] = true
       currentlyPressedCount++
@@ -410,18 +410,13 @@ function init() {
     // if the amount is less than 0.1 return 0.1 
     // this way the bees sound stays but diminishes quickly when stood on by a few people
     let beesVolume = 1 - (currentlyPressedCount / 4) < 0.1 ? 0.1 : 1 - (currentlyPressedCount / 6)
-    let waterVolume = currentlyPressedCount / 30 > 0.2 ? 0.2 : currentlyPressedCount / 30
-    let windVolume = currentlyPressedCount / 50 > 0.2 ? 0.2 : currentlyPressedCount / 50
-    birds.setVolume(currentlyPressedCount / 2)
+    bees.setVolume(beesVolume)
 
-    // fade in
-    if(currentlyPressed[2] === true) {
-      wind.setVolume(wind.getVolume() >= windVolume ? windVolume : wind.getVolume() + 0.005)
-    }
-    // fade out
-    if(currentlyPressed[2] === false && wind.getVolume() > 0) {
-      wind.setVolume(wind.getVolume() > 0 ? wind.getVolume() - 0.004 : 0)
-    }
+    let birdsVolume = currentlyPressedCount / 2 
+    
+    let waterVolume = currentlyPressedCount / 45
+
+    let windVolume = currentlyPressedCount / 45
 
     // bad fix to problem
     if(currentlyPressed[2] === false && wind.getVolume() === 1) {
@@ -429,16 +424,24 @@ function init() {
     }
 
     // fade in
-    if(currentlyPressed[5] === true) {
-      water.setVolume(water.getVolume() >= waterVolume ? waterVolume :  water.getVolume() + 0.002)
-    }
+    fadeIn(2, wind, windVolume, 0.005)
 
     // fade out
-    if(currentlyPressed[5] === false && water.getVolume() > 0) {
-      water.setVolume(water.getVolume() > 0 ? water.getVolume() - 0.002 : 0)
-    }
+    fadeOut(2, wind, 0.005)
 
-    bees.setVolume(beesVolume)
+
+    // fade in
+    fadeIn(5, water, waterVolume, 0.002)
+
+    // fade out
+    fadeOut(5, water, 0.002)
+    
+    // fade in
+    fadeIn(6, birds, birdsVolume, 0.04)
+
+    // fadeOut
+    fadeOut(6, birds, 0.04)
+
 
     // Add fog to the scene
     // scene.fog = new THREE.FogExp2( 0x404040, sceneSettings.current.fog );
@@ -487,6 +490,18 @@ function init() {
 
     // gui.updateDisplay()
     render()
+  }
+
+  function fadeIn(groupId, sound, targetVolume, fadeInSpeed) {
+    if(currentlyPressed[groupId] === true) {
+      sound.setVolume(sound.getVolume() >= targetVolume ? targetVolume : sound.getVolume() + fadeInSpeed)
+    }
+  }
+
+  function fadeOut(groupId, sound, fadeOutSpeed) {
+    if(currentlyPressed[groupId] === false && sound.getVolume() > 0) {
+      sound.setVolume(sound.getVolume() > 0 ? sound.getVolume() - fadeOutSpeed : 0)
+    }
   }
 
   function render () {
