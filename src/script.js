@@ -342,7 +342,7 @@ function init() {
     let geometry = new THREE.BufferGeometry();
     const vertices = [];
 
-    for ( let i = 0; i < 60; i ++ ) {
+    for ( let i = 0; i < 70; i ++ ) {
       const x = randomInteger(-sceneSettings.current.boundary,sceneSettings.current.boundary)
       const y = randomInteger(-sceneSettings.current.boundary,sceneSettings.current.boundary)
       const z = randomInteger(-sceneSettings.current.boundary,sceneSettings.current.boundary)
