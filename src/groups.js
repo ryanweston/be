@@ -6,7 +6,6 @@ function randomiseColour (hRange, sRange, lRange) {
   const s = randomInteger(sRange[0], sRange[1])
   const l = randomInteger(lRange[0], lRange[1])
   let color = 'hsl(' + h + ', ' + s + '%, ' + l + '%)';
-  console.log('colour setting:', color)
   return color
 }
 

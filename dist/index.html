@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Experiment</title><script defer="defer" src="bundle.efbef45b26f716c7ceec.js"></script><link href="main.css" rel="stylesheet"></head><body style="padding:0;margin:0"><audio id="bees" loop style="display:none"><source src="3951806db53057acc2c4.mp3" type="audio/mp3"></audio><audio id="birds" loop style="display:none"><source src="312714f363f2ac808dd2.mp3" type="audio/mp3"></audio><audio id="water" loop style="display:none"><source src="b20228aec00b7fabc182.mp3" type="audio/mp3"></audio><audio id="wind" loop style="display:none"><source src="fbbac1407ef20a210e97.mp3" type="audio/mp3"></audio><div id="overlay" class="vertical-center"><button id="startButton">Start Experience</button></div><script type="x-shader/x-vertex" id="vertexshader">varying vec2 vUv;
+
+    void main() {
+
+      vUv = uv;
+
+      gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );
+
+    }</script><script type="x-shader/x-fragment" id="fragmentshader">uniform sampler2D baseTexture;
+    uniform sampler2D bloomTexture;
+
+    varying vec2 vUv;
+
+    void main() {
+
+      gl_FragColor = ( texture2D( baseTexture, vUv ) + vec4( 1.0 ) * texture2D( bloomTexture, vUv ) );
+
+    }</script><canvas class="webgl"></canvas><script src="d19086af7bc98f1838e9.js"></script></body></html>

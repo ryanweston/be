@@ -9,13 +9,13 @@ import { UnrealBloomPass } from './postprocessing/UnrealBloomPass.js';
 import { randomInteger } from './controls'
 import { config, bloom, sceneSettings } from './config'
 import { Groups } from './groups'
-import { ACESFilmicToneMapping } from 'three';
+// import { ACESFilmicToneMapping } from 'three';
 
 //////////////////////////////////////
 // INITIAL SETUP & VARS            //
 ////////////////////////////////////
 
-var client = new WebSocket("ws://10.188.204.26:4000");
+var client = new WebSocket("ws://10.188.156.5:4000");
 // const gui = new dat.GUI();
 const scene = new THREE.Scene();
 
