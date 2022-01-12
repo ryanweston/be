@@ -1,3 +1,8 @@
+html body {
+  overflow: hidden;
+  padding: 0px;
+  margin: 0px;
+}
 .webgl {
   width:100vw;
   height:100vh
