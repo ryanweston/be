@@ -15,7 +15,7 @@ import { Groups } from './groups'
 // INITIAL SETUP & VARS            //
 ////////////////////////////////////
 
-var client = new WebSocket("ws://10.188.156.5:4000");
+var client = new WebSocket("ws://10.188.204.18:4000");
 // const gui = new dat.GUI();
 const scene = new THREE.Scene();
 
